@@ -439,7 +439,7 @@ class Document:
             html.etree_element, context.style_for, context.get_image_from_uri,
             html.base_url, context.target_collector, counter_style)
 
-        page_boxes = layout_dociument(html, root_box, context)
+        page_boxes = layout_document(html, root_box, context)
 
         if grid_debug is not None:
             page_boxes = list(page_boxes)
