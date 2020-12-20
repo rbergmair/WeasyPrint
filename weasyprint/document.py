@@ -384,9 +384,47 @@ class Document:
         return context
 
     @classmethod
+    def _write_grid_debug_output(cls, page_boxes, grid_debug):
+
+        def extract_lines(children):
+            for child in children:
+                if isinstance(child, boxes.LineBox):
+                    yield child
+                if hasattr(child, "children"):
+                    for line in extract_lines(child.children):
+                        yield line
+
+        def extract_text(children):
+            accumulated_text = ""
+            for child in children:
+                if hasattr(child, "pango_layout"):
+                    if hasattr(child.pango_layout, "text"):
+                        accumulated_text += child.pango_layout.text + " "
+                if hasattr(child, "children"):
+                    for text in extract_text(child.children):
+                        accumulated_text += text + " "
+            return accumulated_text
+
+        with open(grid_debug, "wt", encoding="utf-8") as f:
+
+            for (pageno, page) in enumerate(page_boxes):
+                for (lineno, line) in enumerate( extract_lines(page.children) ):
+                    text = extract_text( line.children )
+                    print(
+                        "{:3d}|{:3d}|{:3.3f}|{:3.3f}|{:s}"\
+                           .format(
+                                pageno,
+                                lineno,
+                                line.position_y,
+                                line.height,
+                                text ),
+                        file=f)
+
+    @classmethod
     def _render(cls, html, stylesheets, enable_hinting,
                 presentational_hints=False, optimize_images=False,
-                font_config=None, counter_style=None, image_cache=None):
+                font_config=None, counter_style=None, image_cache=None,
+                grid_debug=None):
         if font_config is None:
             font_config = FontConfiguration()
 
@@ -401,7 +439,12 @@ class Document:
             html.etree_element, context.style_for, context.get_image_from_uri,
             html.base_url, context.target_collector, counter_style)
 
-        page_boxes = layout_document(html, root_box, context)
+        page_boxes = layout_dociument(html, root_box, context)
+
+        if grid_debug is not None:
+            page_boxes = list(page_boxes)
+            cls._write_grid_debug_output(page_boxes, grid_debug)
+
         rendering = cls(
             [Page(page_box, enable_hinting) for page_box in page_boxes],
             DocumentMetadata(**html._get_metadata()),
